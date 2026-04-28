@@ -149,7 +149,11 @@ char *decode(unsigned int *samples, int *idx) {
         while (samples[i++] < SYNC_THRESHOLD) {} // skip sync sig
         c = 0;
         l = 0;
-        for (int _ = 0; _ < (FRONT_PORCH_PRE + COLOR_BURST_LENGTH + FRONT_PORCH_POST); _++) { c += samples[i++]; l++; }
+        for (int _ = 0; _ < FRONT_PORCH_PRE; _++) { c += samples[i++]; l++; }
+        float rootPhase = atan2(samples[i +0] - samples[i +2], samples[i +1] - samples[i +3]);
+        int burstPos = i;
+        for (int _ = 0; _ < COLOR_BURST_LENGTH; _++) { c += samples[i++]; l++; }
+        for (int _ = 0; _ < FRONT_PORCH_POST; _++) { c += samples[i++]; l++; }
         blackLevel = c / l;
 
         int j = 0;
@@ -157,10 +161,21 @@ char *decode(unsigned int *samples, int *idx) {
             for (int _ = 0; _ < SAMPLES_PER_PIXEL; _++) {
                 if (samples[i] < SYNC_THRESHOLD) doubleSync = true;
                 if (y < FRAME_HEIGHT) {
-                    float l = ((double)((samples[i] + line[j]) / 2) - blackLevel) / (WHITE_LEVEL - blackLevel);
+                    int align = (((i - burstPos) / 4) * 4) + burstPos;
+                    float v = (double)((samples[i] + line[j]) / 2);
+                    float s0 = (double)(samples[align +0] - v) / CHROMA_RANGE;
+                    float s1 = (double)(samples[align +1] - v) / CHROMA_RANGE;
+                    float s2 = (double)(samples[align +2] - v) / CHROMA_RANGE;
+                    float s3 = (double)(samples[align +3] - v) / CHROMA_RANGE;
+                    float h = atan2(s0 - s2, s1 - s3) - DEG_33;
+                    if ((samples[align +0] - v) > 0) { c += samples[align +0] - v; l++; }
+                    if ((samples[align +1] - v) > 0) { c += samples[align +1] - v; l++; }
+                    if ((samples[align +2] - v) > 0) { c += samples[align +2] - v; l++; }
+                    if ((samples[align +3] - v) > 0) { c += samples[align +3] - v; l++; }
+                    float s = (c / l) / CHROMA_RANGE;
                     image[p +0] = l * 255;
-                    image[p +1] = image[p +0];
-                    image[p +2] = image[p +0];
+                    image[p +1] = ((h / PI) * 128) + 128;
+                    image[p +2] = c * 255;
                 }
                 line[j] = samples[i];
                 i++;
