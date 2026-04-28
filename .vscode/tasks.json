@@ -1,0 +1,22 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "build",
+            "command": "g++ ./main.cpp -g -o ./dev",
+            "args": [],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Builds the app"
+        }
+    ],
+    "version": "2.0.0"
+}
