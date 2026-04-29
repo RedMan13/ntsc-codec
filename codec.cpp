@@ -140,7 +140,9 @@ char *decode(unsigned int *samples, int *idx) {
     // collector and length, for averages
     unsigned int c = 0,
         l = 0;
+    bool oddLine = false;
     for (int y = 0; y < TOTAL_RASTER_HEIGHT; y++) {
+        oddLine = !oddLine;
         // we do not nor ever will care about any data contained within those fields, so toss them directly out the window
         if (resetWait) { i += LINE_SAMPLE_WIDTH; continue; }
         bool doubleSync = false;
@@ -163,19 +165,26 @@ char *decode(unsigned int *samples, int *idx) {
                 if (y < FRAME_HEIGHT) {
                     int align = (((i - burstPos) / 4) * 4) + burstPos;
                     float v = (double)((samples[i] + line[j]) / 2);
+                    float luma = (v - BLACK_LEVEL) / (WHITE_LEVEL - BLACK_LEVEL);
                     float s0 = (double)(samples[align +0] - v) / CHROMA_RANGE;
                     float s1 = (double)(samples[align +1] - v) / CHROMA_RANGE;
                     float s2 = (double)(samples[align +2] - v) / CHROMA_RANGE;
                     float s3 = (double)(samples[align +3] - v) / CHROMA_RANGE;
-                    float h = atan2(s0 - s2, s1 - s3) - DEG_33;
-                    if ((samples[align +0] - v) > 0) { c += samples[align +0] - v; l++; }
-                    if ((samples[align +1] - v) > 0) { c += samples[align +1] - v; l++; }
-                    if ((samples[align +2] - v) > 0) { c += samples[align +2] - v; l++; }
-                    if ((samples[align +3] - v) > 0) { c += samples[align +3] - v; l++; }
-                    float s = (c / l) / CHROMA_RANGE;
-                    image[p +0] = l * 255;
-                    image[p +1] = ((h / PI) * 128) + 128;
-                    image[p +2] = c * 255;
+                    float h = (std::atan2(s0 - s2, s1 - s3) - DEG_33) - rootPhase;
+                    if (!oddLine) h += DEG_180;
+                    c = 0;
+                    l = 0;
+                    if (s0 > 0) { c += s0 - v; l++; }
+                    if (s1 > 0) { c += s1 - v; l++; }
+                    if (s2 > 0) { c += s2 - v; l++; }
+                    if (s3 > 0) { c += s3 - v; l++; }
+                    if (l <= 0) l = 1;
+                    float s = c / l;
+                    float j = std::sin(h) * s;
+                    float q = std::cos(h) * s;
+                    image[p +0] = (luma + (0.9469 * j) + (0.6236 * q)) * 255;
+                    image[p +1] = (luma - (0.2748 * j) - (0.6357 * q)) * 255;
+                    image[p +2] = (luma - (1.1 * j) - (1.7 * q)) * 255;
                 }
                 line[j] = samples[i];
                 i++;

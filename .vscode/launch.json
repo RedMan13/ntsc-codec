@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/dev",
-            "args": ["decode", "./output.pcm", "./image.bin", "./fixed.robot.bin"],
+            "args": ["decode", "./output.pcm", "./image.bin", "./fixed.test-pattern.bin"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
