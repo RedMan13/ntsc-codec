@@ -163,27 +163,25 @@ char *decode(unsigned int *samples, int *idx) {
             for (int _ = 0; _ < SAMPLES_PER_PIXEL; _++) {
                 if (samples[i] < SYNC_THRESHOLD) doubleSync = true;
                 if (y < FRAME_HEIGHT) {
-                    int align = (((i - burstPos) / 4) * 4) + burstPos;
+                    int align = (((i - burstPos) / 5) * 5) + burstPos;
                     unsigned int v = (samples[i] + line[j]) / 2;
-                    float luma = (v - blackLevel) / (WHITE_LEVEL - blackLevel);
-                    float s0 = (double)(samples[align +0] - v) / CHROMA_RANGE;
-                    float s1 = (double)(samples[align +1] - v) / CHROMA_RANGE;
-                    float s2 = (double)(samples[align +2] - v) / CHROMA_RANGE;
-                    float s3 = (double)(samples[align +3] - v) / CHROMA_RANGE;
-                    float h = 0;// (std::atan2(s0 - s2, s1 - s3)) - rootPhase;
-                    c = 0;
-                    l = 0;
-                    if (s0 > 0) { c += s0; l++; }
-                    if (s1 > 0) { c += s1; l++; }
-                    if (s2 > 0) { c += s2; l++; }
-                    if (s3 > 0) { c += s3; l++; }
-                    if (l <= 0) l = 1;
-                    float s = c / l;
-                    float j = std::sin(h) * s;
-                    float q = std::cos(h) * s;
-                    image[p +0] = samples[i] - v;// (luma + (0.9469 * j) + (0.6236 * q)) * 255;
-                    image[p +1] = s * 255;// (luma - (0.2748 * j) - (0.6357 * q)) * 255;
-                    image[p +2] = s * 255;// (luma - (1.1 * j) - (1.7 * q)) * 255;
+                    float luma = (double)(v - blackLevel) / (WHITE_LEVEL - blackLevel);
+                    float s0 = (double)(samples[align +0] - v) / (LUMA_RANGE * 2);
+                    float s1 = (double)(samples[align +1] - v) / (LUMA_RANGE * 2);
+                    float s2 = (double)(samples[align +2] - v) / (LUMA_RANGE * 2);
+                    float s3 = (double)(samples[align +3] - v) / (LUMA_RANGE * 2);
+                    float h = (std::atan2(s0 - s2, s1 - s3)) - rootPhase;
+                    float s = 0;
+                    if (s0 > s) s = s0;
+                    if (s1 > s) s = s1;
+                    if (s2 > s) s = s2;
+                    if (s3 > s) s = s3;
+                    float j = std::cos(h) * s;
+                    float q = std::sin(h) * s;
+                    std::cout << "s0:" << s0 << " s1:" << s1 << " s2:" << s2 << " s3:" << s3 << " s:" << s << " i:" << j << " q:" << q << "\n";
+                    image[p +0] = (luma + (0.9469 * j) + (0.6236 * q)) * 255;
+                    image[p +1] = (luma - (0.2748 * j) - (0.6357 * q)) * 255;
+                    image[p +2] = (luma - (1.1 * j) - (1.7 * q)) * 255;
                 }
                 line[j] = samples[i];
                 i++;

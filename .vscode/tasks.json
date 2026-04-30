@@ -3,8 +3,8 @@
         {
             "type": "cppbuild",
             "label": "build",
-            "command": "g++ ./main.cpp -g -o ./dev",
-            "args": [],
+            "command": "g++",
+            "args": ["./main.cpp", "-g", "-o", "./dev"],
             "options": {
                 "cwd": "${fileDirname}"
             },
@@ -16,6 +16,20 @@
                 "isDefault": true
             },
             "detail": "Builds the app"
+        },
+        {
+            "label": "cleanup",
+            "command": "node",
+            "args": ["./fixup.js"],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "none",
+                "isDefault": false
+            },
+            "detail": "Cleans up the test result"
         }
     ],
     "version": "2.0.0"

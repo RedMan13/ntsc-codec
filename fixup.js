@@ -1,2 +1,3 @@
 const fs = require('fs');
-const sharp = require('sharp');
+const data = fs.readFileSync('./output.pcm'); const res = Buffer.alloc(Math.floor(data.length / 4) * 4); for (let i = 0; i < res.length; i += 4) res.writeInt32LE(data.readUInt32LE(i) -2147483647, i); fs.writeFileSync('./fixed.pcm', res);
+require('sharp')(fs.readFileSync('./image.bin'), { raw: { channels: 3, width: 586, height: 220 } }).resize(586, 220 * 2, { fit: 'fill' }).removeAlpha().png().toFile('./image.png')
