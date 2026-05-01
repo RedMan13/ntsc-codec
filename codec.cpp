@@ -159,29 +159,34 @@ char *decode(unsigned int *samples, int *idx) {
         blackLevel = c / l;
 
         int j = 0;
+        int start = i;
         for (int x = 0; x < FRAME_WIDTH; x++) {
             for (int _ = 0; _ < SAMPLES_PER_PIXEL; _++) {
                 if (samples[i] < SYNC_THRESHOLD) doubleSync = true;
                 if (y < FRAME_HEIGHT) {
                     int align = (((i - burstPos) / 5) * 5) + burstPos;
-                    unsigned int v = (samples[i] + line[j]) / 2;
-                    float luma = (double)(v - blackLevel) / (WHITE_LEVEL - blackLevel);
-                    float s0 = (double)(samples[align +0] - v) / (LUMA_RANGE * 2);
-                    float s1 = (double)(samples[align +1] - v) / (LUMA_RANGE * 2);
-                    float s2 = (double)(samples[align +2] - v) / (LUMA_RANGE * 2);
-                    float s3 = (double)(samples[align +3] - v) / (LUMA_RANGE * 2);
-                    float h = (std::atan2(s0 - s2, s1 - s3)) - rootPhase;
+                    int alignPrev = align - start;
+                    unsigned int v0 = (samples[align +0] + line[alignPrev +0]) / 2;
+                    unsigned int v1 = (samples[align +1] + line[alignPrev +1]) / 2;
+                    unsigned int v2 = (samples[align +2] + line[alignPrev +2]) / 2;
+                    unsigned int v3 = (samples[align +3] + line[alignPrev +3]) / 2;
+                    float luma = (double)(((samples[i] + line[j]) / 2) - blackLevel) / (WHITE_LEVEL * 1.33);
+                    float s0 = (double)(samples[align +0] - v0) / (WHITE_LEVEL * 1.33);
+                    float s1 = (double)(samples[align +1] - v1) / (WHITE_LEVEL * 1.33);
+                    float s2 = (double)(samples[align +2] - v2) / (WHITE_LEVEL * 1.33);
+                    float s3 = (double)(samples[align +3] - v3) / (WHITE_LEVEL * 1.33);
+                    float h = std::atan2(s0 - s2, s1 - s3) - rootPhase;
                     float s = 0;
                     if (s0 > s) s = s0;
                     if (s1 > s) s = s1;
                     if (s2 > s) s = s2;
                     if (s3 > s) s = s3;
-                    float j = std::cos(h) * s;
+                    float k = std::cos(h) * s;
                     float q = std::sin(h) * s;
-                    std::cout << "s0:" << s0 << " s1:" << s1 << " s2:" << s2 << " s3:" << s3 << " s:" << s << " i:" << j << " q:" << q << "\n";
-                    image[p +0] = (luma + (0.9469 * j) + (0.6236 * q)) * 255;
-                    image[p +1] = (luma - (0.2748 * j) - (0.6357 * q)) * 255;
-                    image[p +2] = (luma - (1.1 * j) - (1.7 * q)) * 255;
+                    // std::cout << "x:" << x << " y:" << y << " s0:" << s0 << " s1:" << s1 << " s2:" << s2 << " s3:" << s3 << " s:" << s << " y:" << luma << " " << ((samples[i] + line[j]) / 2) << " i:" << k << " q:" << q << "\n";
+                    image[p +0] = (luma + (0.9469 * k) + (0.6236 * q)) * 255;
+                    image[p +1] = (luma - (0.2748 * k) - (0.6357 * q)) * 255;
+                    image[p +2] = (luma - (1.1 * k) - (1.7 * q)) * 255;
                 }
                 line[j] = samples[i];
                 i++;
