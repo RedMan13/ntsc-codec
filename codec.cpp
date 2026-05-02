@@ -23,7 +23,7 @@
 #define LINE_PICTURE_WIDTH (LINE_SAMPLE_WIDTH - (int)(LINE_SAMPLE_WIDTH * 0.165))
 #define SAMPLES_PER_PIXEL (LINE_PICTURE_WIDTH / FRAME_WIDTH)
 #define PIXELS_PER_SAMPLE (1 / SAMPLES_PER_PIXEL)
-#define WHITE_LEVEL 0x8FFFFFFF
+#define WHITE_LEVEL 2415919103
 #define BLACK_LEVEL (int)(WHITE_LEVEL * 0.25)
 #define SYNC_LEVEL 0
 #define SYNC_THRESHOLD ((BLACK_LEVEL - COLOR_BURST_RANGE) - 16)
@@ -88,7 +88,7 @@ unsigned int *encode(unsigned char *image) {
                         float s;
                         // I and Q are encoded as a plane vector, rotated 33 degrees counter-clockwise
                         // nobody says this though??? its very confusing, only reference i have is the doc linked at the top
-                        // in short, I is Y and Q is X, 
+                        // in short, I is Y and Q is X, angle and length from 0,0 become phase and amplitude
                         if (oddLine)
                             s = (std::sin(((i / BYTES_PER_CYCLE) * PI) + DEG_33) * q) + (std::cos(((i / BYTES_PER_CYCLE) * PI) + DEG_33) * j);
                         else
@@ -164,26 +164,25 @@ char *decode(unsigned int *samples, int *idx) {
             for (int _ = 0; _ < SAMPLES_PER_PIXEL; _++) {
                 if (samples[i] < SYNC_THRESHOLD) doubleSync = true;
                 if (y < FRAME_HEIGHT) {
-                    int align = (((i - burstPos) / 5) * 5) + burstPos;
-                    int alignPrev = align - start;
-                    unsigned int v0 = (samples[align +0] + line[alignPrev +0]) / 2;
-                    unsigned int v1 = (samples[align +1] + line[alignPrev +1]) / 2;
-                    unsigned int v2 = (samples[align +2] + line[alignPrev +2]) / 2;
-                    unsigned int v3 = (samples[align +3] + line[alignPrev +3]) / 2;
-                    float luma = (double)(((samples[i] + line[j]) / 2) - blackLevel) / (WHITE_LEVEL * 1.33);
-                    float s0 = (double)(samples[align +0] - v0) / (WHITE_LEVEL * 1.33);
-                    float s1 = (double)(samples[align +1] - v1) / (WHITE_LEVEL * 1.33);
-                    float s2 = (double)(samples[align +2] - v2) / (WHITE_LEVEL * 1.33);
-                    float s3 = (double)(samples[align +3] - v3) / (WHITE_LEVEL * 1.33);
-                    float h = std::atan2(s0 - s2, s1 - s3) - rootPhase;
+                    unsigned int v0 = ((samples[i +0] / 2) + (line[j +0] / 2));
+                    unsigned int v1 = ((samples[i +1] / 2) + (line[j +1] / 2));
+                    unsigned int v2 = ((samples[i +2] / 2) + (line[j +2] / 2));
+                    unsigned int v3 = ((samples[i] / 2) + (line[j +3] / 2));
+                    float luma = (double)(v0 - blackLevel) / WHITE_LEVEL;
+                    float s0 = (double)((long)samples[i +0] - v0) / CHROMA_RANGE;
+                    float s1 = (double)((long)samples[i +1] - v1) / CHROMA_RANGE;
+                    float s2 = (double)((long)samples[i +2] - v2) / CHROMA_RANGE;
+                    float s3 = (double)((long)samples[i +3] - v3) / CHROMA_RANGE;
+                    float h = (std::atan2(s0 - s2, s1 - s3) - DEG_33) -
+                        std::sin(((j / BYTES_PER_CYCLE) * PI));
+                    if (oddLine) h += DEG_90;
                     float s = 0;
                     if (s0 > s) s = s0;
                     if (s1 > s) s = s1;
                     if (s2 > s) s = s2;
                     if (s3 > s) s = s3;
-                    float k = std::cos(h) * s;
-                    float q = std::sin(h) * s;
-                    // std::cout << "x:" << x << " y:" << y << " s0:" << s0 << " s1:" << s1 << " s2:" << s2 << " s3:" << s3 << " s:" << s << " y:" << luma << " " << ((samples[i] + line[j]) / 2) << " i:" << k << " q:" << q << "\n";
+                    float k = std::sin(h) * s;
+                    float q = std::cos(h) * s;
                     image[p +0] = (luma + (0.9469 * k) + (0.6236 * q)) * 255;
                     image[p +1] = (luma - (0.2748 * k) - (0.6357 * q)) * 255;
                     image[p +2] = (luma - (1.1 * k) - (1.7 * q)) * 255;
